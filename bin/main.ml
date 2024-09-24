@@ -1,4 +1,5 @@
-include Parser
+open Parzer
+open Parzer.Parser
 
 module P = struct
   let is_digit = function
