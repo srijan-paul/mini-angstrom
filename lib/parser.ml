@@ -19,6 +19,7 @@ module Monad = struct
     | Error _ as err -> err
 
   let ( >>= ) = bind
+  let ( let* ) = bind
 
   let ( <* ) p q = 
     p >>= fun pout ->
