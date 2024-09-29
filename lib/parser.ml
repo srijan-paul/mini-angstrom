@@ -92,6 +92,12 @@ let string s : string t =
         else Error (Printf.sprintf "Expected %s." s)
     | Error _ as err -> err
 
+let take n : string t =
+  fun input ->
+    match Input.take n input with
+    | Ok s -> Ok (s, Input.advance_by n input)
+    | Error _ as err -> err
+
 let rec many (p : 'a t) : 'a list t =
   let many' =
     p >>= fun x ->
