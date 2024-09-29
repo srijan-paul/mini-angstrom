@@ -62,6 +62,8 @@ module Alternative = struct
     | (Ok _ as p_out), _ -> p_out
     | _, (Ok _ as q_out) -> q_out
     | p_error, _ -> p_error
+
+  let ( <|> ) = or'
 end
 
 include Monad
