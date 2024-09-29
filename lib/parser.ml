@@ -82,21 +82,15 @@ let sat_char pred =
 
 let char c : char t = sat_char (fun x -> x = c)
 
-let string s : string t =
-  let slen = String.length s in
-  fun input ->
-    match Input.take slen input with
-    | Ok prefix ->
-        if prefix = s then
-          Ok (prefix, Input.advance_by slen input)
-        else Error (Printf.sprintf "Expected %s." s)
-    | Error _ as err -> err
-
 let take n : string t =
   fun input ->
     match Input.take n input with
     | Ok s -> Ok (s, Input.advance_by n input)
     | Error _ as err -> err
+
+let string s : string t =
+  let* prefix = take (String.length s) in
+  if prefix = s then pure s else fail (Printf.sprintf "Expected %s." s)
 
 let rec many (p : 'a t) : 'a list t =
   let many' =

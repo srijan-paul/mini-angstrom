@@ -41,6 +41,7 @@ let integer = bracket (char 'i') number (char 'e')
 let b_integer = lift num integer
 let b_byte_string = lift str byte_string
 
+(* TODO: Improve error messages *)
 let rec b_value input =
   (b_integer <|> b_byte_string <|> b_list <|> b_dict) input
 
