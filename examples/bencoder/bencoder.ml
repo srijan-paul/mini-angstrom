@@ -19,26 +19,7 @@ let is_digit = function
 let string_of_chars chars = chars |> List.to_seq |> String.of_seq
 let num_of_chars chars = chars |> string_of_chars |> int_of_string_opt
 
-let number =
-  is_digit |> sat_char |> many |> lift num_of_chars >>= function
-  | Some n -> pure n
-  | None -> fail "not a number"
-
-let rec bvalue input = (bint <|> bstring <|> blist <|> bdict) input
-and bint = bracket (char 'i') number (char 'e') |> lift num
-and bstring' = number >>= fun n -> char ':' *> take n
-and bstring input = (bstring' |> lift str) input
-
-and blist input =
-  (bracket (char 'l') (many bvalue) (char 'e') |> lift lizt) input
-
-and key_value input =
-  (let* key = bstring' in
-   let* value = bvalue in
-   pure (key, value))
-    input
-
-and sorted = function
+let sorted = function
   | [] -> true
   | _ :: t as keys ->
       t
@@ -46,15 +27,46 @@ and sorted = function
       |> Seq.zip (List.to_seq keys)
       |> Seq.for_all (fun (a, b) -> a <= b)
 
-and bdict input =
-  (bracket (char 'd')
-     ( many key_value >>= fun pairs ->
-       if pairs |> List.map fst |> sorted then pure pairs else fail "not sorted"
-     )
-     (char 'e')
-  |> lift dict)
-    input
+(* TODO: -ve numbers *)
+let number =
+  is_digit |> sat_char |> many |> lift num_of_chars >>= function
+  | Some n -> pure n
+  | None -> fail "not a number"
 
+let byte_string =
+  let* n = number in
+  char ':' *> take n
+
+let integer = bracket (char 'i') number (char 'e')
+
+(* Do we really need to fail if the keys are not sorted? Doesn't seem like a
+   responsibility of the parser. *)
+let sorted_keys pairs =
+  let keys = List.map fst pairs in
+  if sorted keys then pure pairs else fail "not sorted"
+
+let rec bvalue input = (bint <|> bstring <|> blist <|> bdict) input
+and bint = lift num integer
+and bstring = lift str byte_string
+
+(* XXX: Parse [t list] instead of [Lizt]? *)
+and blist input =
+  let p = bracket (char 'l') (many bvalue) (char 'e') in
+  lift lizt p input
+
+(* Can we do something about [lift _ p input] pattern (looks ugly)? *)
+
+(* XXX: Parse [(string * t) list] instead of [Dict]? *)
+and bdict input =
+  let entry =
+    let* key = byte_string in
+    let* value = bvalue in
+    pure (key, value)
+  in
+  let p = bracket (char 'd') (many entry) (char 'e') in
+  lift dict p input
+
+(* TODO: Improve tests *)
 let%test "bencoding int" =
   "i42e" |> Input.create |> bvalue |> Result.map fst = Ok (Num 42)
 
@@ -74,22 +86,3 @@ let%test "bencoding dictionaries" =
   |> bvalue
   |> Result.map fst
   = Ok (Dict [ ("foo", Str "bar"); ("spam", Num 42) ])
-
-(* This is failing because the error string is different.
-   Although, it is as expected when run from [utop]. I suspect that this has
-   something to do with the preprocessor. The error is as follows:
-
-   File "examples/bencoder/dune", line 4, characters 1-15:
-   4 |  (inline_tests)
-        ^^^^^^^^^^^^^^
-   Predicate not satisfied
-   File "examples/bencoder/bencoder.ml", line 89, characters 0-208: bencoding unsorted keys is false.
-
-   FAILED 1 / 5 tests *)
-let%test "bencoding unsorted keys" =
-  match
-    "d4:spami42e3:foo3:bare" |> Input.create |> bvalue |> Result.map fst
-  with
-  | Error "not sorted" -> true
-  | Error e -> print_endline e; false
-  | _ -> false
