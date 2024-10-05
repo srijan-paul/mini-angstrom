@@ -79,3 +79,5 @@ let%test "bencoding homogeneous list" =
 let%test "bencoding dictionaries" =
   test_parser_ok b_dict "d3:foo3:bar4:spami42ee"
     (Dict [ ("foo", Str "bar"); ("spam", Num 42) ])
+
+let%test "bencoding negative int" = test_parser_ok integer "i-1e" (-1)
