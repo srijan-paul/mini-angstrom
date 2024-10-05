@@ -27,17 +27,18 @@ let sorted = function
       |> Seq.zip (List.to_seq keys)
       |> Seq.for_all (fun (a, b) -> a <= b)
 
-(* TODO: -ve numbers *)
-let number =
-  is_digit |> sat_char |> many |> lift num_of_chars >>= function
-  | Some n -> pure n
-  | None -> fail "not a number"
+module Number = struct
+  let whole =
+    is_digit |> sat_char |> many |> lift num_of_chars >>= function
+    | Some n -> pure n
+    | None -> fail "not a number"
 
-let byte_string =
-  let* n = number in
-  char ':' *> take n
+  let negative = char '-' >>= Fun.const whole >>= fun n -> pure (-n)
+end
 
-let integer = bracket (char 'i') number (char 'e')
+let byte_string = Number.whole >>= fun n -> char ':' *> take n
+
+let integer = bracket (char 'i') Number.(whole <|> negative) (char 'e')
 let b_integer = lift num integer
 let b_byte_string = lift str byte_string
 
