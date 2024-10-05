@@ -62,23 +62,20 @@ and b_dict input =
   let p = bracket (char 'd') (many entry) (char 'e') in
   lift dict p input
 
-(* TODO: Improve tests *)
-let%test "bencoding int" =
-  "i42e" |> Input.create |> b_value |> Result.map fst = Ok (Num 42)
+(* TESTS *)
 
-let%test "bencoding string" =
-  "5:hello" |> Input.create |> b_value |> Result.map fst = Ok (Str "hello")
+let test_parser_ok p input expected =
+  let parsed = input |> Input.create |> p in
+  match parsed with
+  | Ok (v, _) -> v = expected
+  | _ -> false
+
+let%test "bencoding int" = test_parser_ok integer "i42e" 42
+let%test "bencoding string" = test_parser_ok byte_string "5:hello" "hello"
 
 let%test "bencoding homogeneous list" =
-  "l4:spami42ee"
-  |> Input.create
-  |> b_value
-  |> Result.map fst
-  = Ok (Lizt [ Str "spam"; Num 42 ])
+  test_parser_ok b_list "l4:spami42ee" (Lizt [ Str "spam"; Num 42 ])
 
 let%test "bencoding dictionaries" =
-  "d3:foo3:bar4:spami42ee"
-  |> Input.create
-  |> b_value
-  |> Result.map fst
-  = Ok (Dict [ ("foo", Str "bar"); ("spam", Num 42) ])
+  test_parser_ok b_dict "d3:foo3:bar4:spami42ee"
+    (Dict [ ("foo", Str "bar"); ("spam", Num 42) ])
