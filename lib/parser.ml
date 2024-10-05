@@ -89,8 +89,9 @@ let take n : string t =
     | Error _ as err -> err
 
 let string s : string t =
-  let* prefix = take (String.length s) in
-  if prefix = s then pure s else fail (Printf.sprintf "Expected %s." s)
+  take (String.length s) >>= function
+  | prefix when prefix = s -> pure s
+  | _ -> fail (Printf.sprintf "Expected %s." s)
 
 let rec many (p : 'a t) : 'a list t =
   let many' =
