@@ -16,7 +16,7 @@ let to_string { buffer; offset; len } =
   String.sub buffer offset (len - offset) 
 
 let take n { buffer; offset; len } = 
-  if offset + n >= len
+  if offset + n > len
     then Error "Reached end of input"
     else Ok (String.sub buffer offset n)
 

@@ -19,6 +19,7 @@ module Monad = struct
     | Error _ as err -> err
 
   let ( >>= ) = bind
+  let ( let* ) = bind
 
   let ( <* ) p q = 
     p >>= fun pout ->
@@ -62,6 +63,8 @@ module Alternative = struct
     | (Ok _ as p_out), _ -> p_out
     | _, (Ok _ as q_out) -> q_out
     | p_error, _ -> p_error
+
+  let ( <|> ) = or'
 end
 
 include Monad
@@ -79,15 +82,16 @@ let sat_char pred =
 
 let char c : char t = sat_char (fun x -> x = c)
 
-let string s : string t =
-  let slen = String.length s in
+let take n : string t =
   fun input ->
-    match Input.take slen input with
-    | Ok prefix ->
-        if prefix = s then
-          Ok (prefix, Input.advance_by slen input)
-        else Error (Printf.sprintf "Expected %s." s)
+    match Input.take n input with
+    | Ok s -> Ok (s, Input.advance_by n input)
     | Error _ as err -> err
+
+let string s : string t =
+  take (String.length s) >>= function
+  | prefix when prefix = s -> pure s
+  | _ -> fail (Printf.sprintf "Expected %s." s)
 
 let rec many (p : 'a t) : 'a list t =
   let many' =
